@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+venv/
+.venv/
+env/
+ 
+# Environment / secrets
+.env
+.env.*
+*.env
+ 
+# Streamlit
+.streamlit/secrets.toml
+ 
+# Data files (fetched fresh via pipeline, not committed)
+data/*.parquet
+data/_enrich_cache.parquet
+ 
+# macOS
+.DS_Store
+ 
+# IDEs
+.vscode/
+.idea/
+*.swp

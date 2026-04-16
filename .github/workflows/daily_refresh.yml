@@ -1,0 +1,40 @@
+name: Daily Data Refresh
+
+on:
+  schedule:
+    - cron: "0 7 * * *"   # 7am UTC daily (adjust to taste)
+  workflow_dispatch:        # also allow manual trigger from GitHub UI
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Scrape Kworb (all markets)
+        run: python fetch/scrape_kworb.py
+        # Takes ~90s with 1.2s delay across 72 markets
+
+      - name: Enrich with Spotify API
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        run: python fetch/enrich_spotify.py
+
+      - name: Upload to Supabase Storage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python fetch/upload_supabase.py
