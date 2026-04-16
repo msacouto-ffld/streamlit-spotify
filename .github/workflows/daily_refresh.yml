@@ -25,13 +25,32 @@ jobs:
 
       - name: Scrape Kworb (all markets)
         run: python fetch/scrape_kworb.py
-        # Takes ~90s with 1.2s delay across 72 markets
 
-      - name: Enrich with Spotify API
-        env:
-          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
-          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-        run: python fetch/enrich_spotify.py
+      - name: Merge enriched cache with fresh data
+        run: |
+          python3 -c "
+          import pandas as pd
+          from pathlib import Path
+
+          data_dir = Path('data')
+          fresh    = pd.read_parquet(data_dir / 'all_markets.parquet')
+          cache    = data_dir / '_enrich_cache.parquet'
+
+          if cache.exists():
+              lookup = pd.read_parquet(cache)[['artist', 'title', 'album_art_url', 'spotify_url']]
+              enriched = fresh.merge(lookup, on=['artist', 'title'], how='left')
+              enriched['album_art_url'] = enriched['album_art_url'].fillna('')
+              enriched['spotify_url']   = enriched['spotify_url'].fillna('')
+          else:
+              enriched = fresh
+              enriched['album_art_url'] = ''
+              enriched['spotify_url']   = ''
+
+          enriched.to_parquet(data_dir / 'enriched.parquet', index=False)
+          print(f'Enriched {len(enriched):,} rows')
+          art_pct = (enriched['album_art_url'] != '').mean() * 100
+          print(f'Album art coverage: {art_pct:.1f}%')
+          "
 
       - name: Upload to Supabase Storage
         env:
