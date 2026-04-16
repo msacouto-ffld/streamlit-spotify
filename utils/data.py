@@ -39,6 +39,15 @@ def load_data() -> pd.DataFrame:
     # Prefer enriched (has album art + Spotify links) → combined → individual files
     enriched = DATA_DIR / "enriched.parquet"
     combined = DATA_DIR / "all_markets.parquet"
+
+    # If no local files exist, try downloading from Supabase first
+    if not enriched.exists() and not combined.exists():
+        try:
+            from utils.supabase_loader import download_if_needed
+            download_if_needed(force=False)
+        except Exception as e:
+            st.warning(f"Supabase download attempted but failed: {e}")
+
     if enriched.exists():
         df = pd.read_parquet(enriched)
     elif combined.exists():
@@ -152,3 +161,48 @@ def momentum_songs(df: pd.DataFrame, market: str = "global", n: int = 50) -> pd.
         .head(n)
         .reset_index(drop=True)
     )
+
+
+@st.cache_data(show_spinner="Loading historical data…")
+def load_totals() -> pd.DataFrame | None:
+    """
+    Loads the global all-time totals Parquet (scraped from Kworb totals page).
+    Returns None if the file hasn't been scraped yet.
+    """
+    path = DATA_DIR / "global_totals.parquet"
+
+    # Try downloading from Supabase if not local
+    if not path.exists():
+        try:
+            from utils.supabase_loader import download_file
+            download_file("global_totals.parquet")
+        except Exception:
+            pass
+
+    if not path.exists():
+        return None
+
+    df = pd.read_parquet(path)
+
+    for col in ("days", "days_top10", "peak_pos", "peak_times", "peak_streams", "streams_total"):
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    if "first_year" in df.columns:
+        df["first_year"] = pd.to_numeric(df["first_year"], errors="coerce").astype("Int64")
+
+    # Merge album art from enriched data if available
+    enriched_path = DATA_DIR / "enriched.parquet"
+    if enriched_path.exists():
+        art = (
+            pd.read_parquet(enriched_path)[["artist", "title", "album_art_url", "spotify_url"]]
+            .drop_duplicates(subset=["artist", "title"])
+        )
+        df = df.merge(art, on=["artist", "title"], how="left")
+        df["album_art_url"] = df["album_art_url"].fillna("")
+        df["spotify_url"]   = df["spotify_url"].fillna("")
+    else:
+        df["album_art_url"] = ""
+        df["spotify_url"]   = ""
+
+    return df

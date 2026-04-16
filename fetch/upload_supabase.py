@@ -25,6 +25,7 @@ DATA_DIR         = Path(__file__).parent.parent / "data"
 FILES_TO_UPLOAD = [
     "enriched.parquet",
     "all_markets.parquet",
+    "global_totals.parquet",
 ]
 
 

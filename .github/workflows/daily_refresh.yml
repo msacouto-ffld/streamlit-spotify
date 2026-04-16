@@ -26,6 +26,9 @@ jobs:
       - name: Scrape Kworb (all markets)
         run: python fetch/scrape_kworb.py
 
+      - name: Scrape Kworb global totals (historical)
+        run: python fetch/scrape_kworb_totals.py
+
       - name: Merge enriched cache with fresh data
         run: |
           python3 -c "

@@ -53,3 +53,20 @@ def download_if_needed(force: bool = False) -> bool:
             print(f"  Warning: Supabase download failed for {filename}: {e}")
 
     return downloaded
+
+
+def download_file(filename: str) -> bool:
+    """Downloads a single file from Supabase Storage into data/."""
+    supabase_url = _get_secret("SUPABASE_URL").rstrip("/")
+    if not supabase_url:
+        return False
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    url = f"{supabase_url}/storage/v1/object/public/{BUCKET}/{filename}"
+    try:
+        resp = requests.get(url, timeout=60)
+        if resp.status_code == 200:
+            (DATA_DIR / filename).write_bytes(resp.content)
+            return True
+    except Exception:
+        pass
+    return False
