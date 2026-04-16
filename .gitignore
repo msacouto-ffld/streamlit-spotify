@@ -17,7 +17,7 @@ env/
  
 # Data files (fetched fresh via pipeline, not committed)
 data/*.parquet
-data/_enrich_cache.parquet
+
  
 # macOS
 .DS_Store
