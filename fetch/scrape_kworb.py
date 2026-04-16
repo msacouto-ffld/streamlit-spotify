@@ -170,11 +170,12 @@ def fetch_chart(market_code: str) -> pd.DataFrame | None:
     try:
         resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT_SEC)
         resp.raise_for_status()
+        resp.encoding = "utf-8" 
     except requests.RequestException as e:
         print(f"  ✗ {market_code}: request failed — {e}")
         return None
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+    soup = BeautifulSoup(resp.content, "html.parser", from_encoding="utf-8")
 
     # ── Extract chart date from heading ──────────────────────────────────────
     chart_date = None
